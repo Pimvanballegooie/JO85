@@ -1,8 +1,6 @@
 // ============ Supabase-config ============
-// TODO: vul in zodra het Supabase-project is aangemaakt (zie supabase_schema.sql
-// voor de tabellen). Project-instellingen -> API -> Project URL / anon public key.
-const SUPABASE_URL = 'VUL_HIER_JE_SUPABASE_PROJECT_URL_IN';
-const ANON_KEY = 'VUL_HIER_JE_SUPABASE_ANON_KEY_IN';
+const SUPABASE_URL = 'https://qulbdanadolywlvgsebw.supabase.co';
+const ANON_KEY = 'sb_publishable_HuzKgMHjUXLM3xNsliXtyw_At7OsX0T';
 const HEADERS = { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' };
 
 const IS_CONFIGURED = !SUPABASE_URL.startsWith('VUL_HIER');
