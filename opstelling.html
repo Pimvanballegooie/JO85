@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Opstelling – JO8-5</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<main>
+  <div class="sectie-titel" style="margin-top:0">🧩 Opstelling</div>
+  <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px">Elk kwart heeft een eigen keeper, 5 veldspelers en 2 wissels. Sleep een speler op een andere plek (of op de bank) om te wisselen.</p>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="form-group" style="margin:0">
+      <label>Wedstrijd</label>
+      <select id="kies-opstelling-wedstrijd"></select>
+    </div>
+  </div>
+
+  <div id="opstelling-inhoud"><div class="leeg-melding">Laden…</div></div>
+</main>
+
+<script src="shared.js"></script>
+<script>
+renderHeader('opstelling');
+renderFooter();
+
+const sessie = huidigeSessie();
+const MAG_BEWERKEN = !!(sessie && sessie.isBeheerder);
+
+// Vaste veldposities: index 0 = keeper, 1-2 = verdedigers, 3-4 = middenvelders, 5 = aanvaller
+const POSITIES = [
+  { x: 50, y: 90, rol: 'keeper' },
+  { x: 28, y: 68 }, { x: 72, y: 68 },
+  { x: 28, y: 42 }, { x: 72, y: 42 },
+  { x: 50, y: 18 },
+];
+
+let SPELERS = [];         // [{id, naam, foto_url}]
+let SPELERS_BY_ID = {};
+let KWART_DATA = {};      // { 1: {spelers:[id x6], wissels:[id x2]}, 2: {...}, 3: {...}, 4: {...} }
+let HUIDIGE_WEDSTRIJD_ID = null;
+
+function chipHtml(spelerId, kwart, slotType, slotIndex, rol) {
+  const s = SPELERS_BY_ID[spelerId];
+  if (!s) return '';
+  const foto = s.foto_url
+    ? `<img class="chip-foto" src="${s.foto_url}" alt="" onerror="this.outerHTML='<div class=chip-avatar>${escapeHtml((s.naam||'?')[0])}</div>'" />`
+    : `<div class="chip-avatar">${escapeHtml((s.naam||'?')[0])}</div>`;
+  return `
+    <div class="speler-chip ${rol==='keeper'?'keeper':''} ${MAG_BEWERKEN?'':'niet-bewerkbaar'}"
+         data-kwart="${kwart}" data-slot-type="${slotType}" data-slot-index="${slotIndex}" data-speler-id="${spelerId}">
+      ${foto}
+      <div class="chip-naam">${escapeHtml(s.naam)}${rol==='keeper' ? ' 🧤' : ''}</div>
+    </div>`;
+}
+
+function renderKwart(kwart) {
+  const data = KWART_DATA[kwart];
+  const veldSlots = POSITIES.map((pos, i) => `
+    <div class="veld-slot" style="left:${pos.x}%;top:${pos.y}%">
+      ${chipHtml(data.spelers[i], kwart, 'veld', i, pos.rol)}
+    </div>`).join('');
+
+  const bankChips = data.wissels.map((id, i) => chipHtml(id, kwart, 'bank', i, null)).join('');
+
+  return `
+    <div class="kwart-blok" data-kwart-blok="${kwart}">
+      <div class="kwart-titel">⏱️ Kwart ${kwart}</div>
+      <div class="veld" data-kwart-veld="${kwart}">
+        <div class="goal-box"></div>
+        ${veldSlots}
+      </div>
+      <div class="bank-wrap">
+        <div class="bank-titel">🔄 Wissels</div>
+        <div class="bank-rij" data-kwart-bank="${kwart}">${bankChips}</div>
+      </div>
+    </div>`;
+}
+
+function renderAlleKwarten() {
+  const wrap = document.getElementById('opstelling-inhoud');
+  let html = `<div class="kwarten-grid">${[1,2,3,4].map(renderKwart).join('')}</div>`;
+  if (MAG_BEWERKEN) {
+    html += `
+      <div style="margin-top:20px;display:flex;align-items:center;gap:12px">
+        <button class="btn" id="btn-opslaan-opstelling">💾 Opstelling opslaan</button>
+        <span id="opslaan-status" style="font-size:0.85rem;color:var(--text-muted)"></span>
+      </div>`;
+  }
+  wrap.innerHTML = html;
+  if (MAG_BEWERKEN) {
+    document.getElementById('btn-opslaan-opstelling').addEventListener('click', slaOpstellingOp);
+    koppelSleepEvents();
+  }
+}
+
+// ============ Slepen (pointer events — werkt met muis én touch) ============
+let dragState = null; // { spelerId, vanuitKwart, vanuitType, vanuitIndex, ghostEl }
+
+function koppelSleepEvents() {
+  document.querySelectorAll('.speler-chip').forEach(chip => {
+    chip.addEventListener('pointerdown', onChipPointerDown);
+  });
+}
+
+function onChipPointerDown(e) {
+  const chip = e.currentTarget;
+  e.preventDefault();
+  const spelerId = parseInt(chip.dataset.spelerId, 10);
+  dragState = {
+    spelerId,
+    kwart: parseInt(chip.dataset.kwart, 10),
+    vanuitType: chip.dataset.slotType,
+    vanuitIndex: parseInt(chip.dataset.slotIndex, 10),
+  };
+  chip.classList.add('dragging');
+
+  const ghost = chip.cloneNode(true);
+  ghost.classList.remove('dragging');
+  ghost.classList.add('sleep-ghost');
+  ghost.style.left = e.clientX + 'px';
+  ghost.style.top = e.clientY + 'px';
+  document.body.appendChild(ghost);
+  dragState.ghostEl = ghost;
+  dragState.bronChip = chip;
+
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp, { once: true });
+}
+
+function onPointerMove(e) {
+  if (!dragState) return;
+  dragState.ghostEl.style.left = e.clientX + 'px';
+  dragState.ghostEl.style.top = e.clientY + 'px';
+}
+
+function onPointerUp(e) {
+  window.removeEventListener('pointermove', onPointerMove);
+  if (!dragState) return;
+  const { spelerId, kwart, vanuitType, vanuitIndex, ghostEl, bronChip } = dragState;
+  ghostEl.remove();
+  bronChip.classList.remove('dragging');
+
+  // Zoek het element onder de vinger/muis, binnen hetzelfde kwart
+  ghostEl.style.display = 'none';
+  const onder = document.elementFromPoint(e.clientX, e.clientY);
+  dragState = null;
+  if (!onder) return;
+
+  const veldEl = onder.closest(`[data-kwart-veld="${kwart}"]`);
+  const bankEl = onder.closest(`[data-kwart-bank="${kwart}"]`);
+
+  let doelType = null, doelIndex = null;
+  if (veldEl) {
+    // Bepaal dichtstbijzijnde veldpositie t.o.v. de dropcoördinaat
+    const rect = veldEl.getBoundingClientRect();
+    const relX = ((e.clientX - rect.left) / rect.width) * 100;
+    const relY = ((e.clientY - rect.top) / rect.height) * 100;
+    let besteAfstand = Infinity;
+    POSITIES.forEach((pos, i) => {
+      const afstand = Math.hypot(pos.x - relX, pos.y - relY);
+      if (afstand < besteAfstand) { besteAfstand = afstand; doelIndex = i; }
+    });
+    doelType = 'veld';
+  } else if (bankEl) {
+    const chipOnder = onder.closest('.speler-chip');
+    doelType = 'bank';
+    doelIndex = chipOnder ? parseInt(chipOnder.dataset.slotIndex, 10) : (KWART_DATA[kwart].wissels.length > 0 ? 0 : 0);
+  } else {
+    return; // buiten een geldig doel losgelaten
+  }
+
+  if (doelType === vanuitType && doelIndex === vanuitIndex) return; // zelfde plek
+
+  // Wissel de twee spelers om
+  const data = KWART_DATA[kwart];
+  const bron = vanuitType === 'veld' ? data.spelers : data.wissels;
+  const doel = doelType === 'veld' ? data.spelers : data.wissels;
+  const doelSpelerId = doel[doelIndex];
+  doel[doelIndex] = spelerId;
+  bron[vanuitIndex] = doelSpelerId;
+
+  const wrap = document.getElementById('opstelling-inhoud');
+  const blok = wrap.querySelector(`[data-kwart-blok="${kwart}"]`);
+  blok.outerHTML = renderKwart(kwart);
+  koppelSleepEvents();
+}
+
+// ============ Data laden/opslaan ============
+function standaardKwartData() {
+  const ids = SPELERS.map(s => s.id);
+  return { spelers: ids.slice(0, 6), wissels: ids.slice(6, 8) };
+}
+
+async function laadOpstellingen() {
+  const inhoud = document.getElementById('opstelling-inhoud');
+  if (!IS_CONFIGURED) { inhoud.innerHTML = '<div class="leeg-melding"><div class="icoon">🔧</div>Nog niet gekoppeld aan de database.</div>'; return; }
+  if (!HUIDIGE_WEDSTRIJD_ID) { inhoud.innerHTML = '<div class="leeg-melding">Geen wedstrijden gevonden — voeg er eerst een toe via Programma.</div>'; return; }
+
+  KWART_DATA = { 1: standaardKwartData(), 2: standaardKwartData(), 3: standaardKwartData(), 4: standaardKwartData() };
+
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/opstellingen?wedstrijd_id=eq.${HUIDIGE_WEDSTRIJD_ID}&select=*`, { headers: HEADERS });
+    const rijen = await resp.json();
+    (rijen || []).forEach(r => {
+      if (r.kwart >= 1 && r.kwart <= 4 && Array.isArray(r.spelers) && r.spelers.length === 6) {
+        KWART_DATA[r.kwart] = { spelers: r.spelers.slice(), wissels: (r.wissels || []).slice() };
+      }
+    });
+  } catch (e) { /* val terug op standaardindeling */ }
+
+  renderAlleKwarten();
+}
+
+async function slaOpstellingOp() {
+  const status = document.getElementById('opslaan-status');
+  status.textContent = 'Bezig met opslaan…';
+  try {
+    for (const kwart of [1, 2, 3, 4]) {
+      const data = KWART_DATA[kwart];
+      const body = { wedstrijd_id: HUIDIGE_WEDSTRIJD_ID, kwart, spelers: data.spelers, wissels: data.wissels };
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/opstellingen?on_conflict=wedstrijd_id,kwart`, {
+        method: 'POST',
+        headers: { ...HEADERS, Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(body)
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+    }
+    status.textContent = '✓ Opgeslagen!';
+    setTimeout(() => { status.textContent = ''; }, 2500);
+  } catch (e) {
+    status.textContent = 'Opslaan mislukt.';
+  }
+}
+
+async function initPagina() {
+  const inhoud = document.getElementById('opstelling-inhoud');
+  const select = document.getElementById('kies-opstelling-wedstrijd');
+  if (!IS_CONFIGURED) { inhoud.innerHTML = '<div class="leeg-melding"><div class="icoon">🔧</div>Nog niet gekoppeld aan de database.</div>'; return; }
+
+  try {
+    const [spelersResp, wedstrijdenResp] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/spelers?select=id,naam,foto_url&order=naam.asc`, { headers: HEADERS }),
+      fetch(`${SUPABASE_URL}/rest/v1/wedstrijden?select=id,datum,tegenstander&order=datum.desc`, { headers: HEADERS }),
+    ]);
+    SPELERS = await spelersResp.json();
+    SPELERS_BY_ID = Object.fromEntries(SPELERS.map(s => [s.id, s]));
+    const wedstrijden = await wedstrijdenResp.json();
+
+    if (!wedstrijden || wedstrijden.length === 0) {
+      inhoud.innerHTML = '<div class="leeg-melding">Nog geen wedstrijden — voeg er eerst een toe via <a href="programma.html" style="color:var(--groen-dark);font-weight:700">Programma</a>.</div>';
+      return;
+    }
+
+    select.innerHTML = wedstrijden.map(w => `<option value="${w.id}">${formatDatum(w.datum)} — vs ${escapeHtml(w.tegenstander)}</option>`).join('');
+    HUIDIGE_WEDSTRIJD_ID = wedstrijden[0].id;
+    select.addEventListener('change', () => {
+      HUIDIGE_WEDSTRIJD_ID = parseInt(select.value, 10);
+      laadOpstellingen();
+    });
+
+    laadOpstellingen();
+  } catch (e) {
+    inhoud.innerHTML = '<div class="leeg-melding">Kon niet laden.</div>';
+  }
+}
+
+initPagina();
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Team – JO8-5</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<main>
+  <div class="sectie-titel">👦 Het team</div>
+  <p style="color:var(--text-muted);margin-bottom:18px;font-size:0.9rem">Klik op een speler voor zijn profiel — daar kun je ook inloggen om je eigen profiel bij te werken.</p>
+  <div class="grid" id="spelers-grid"></div>
+</main>
+
+<script src="shared.js"></script>
+<script>
+renderHeader('spelers');
+renderFooter();
+
+async function laadSpelers() {
+  const grid = document.getElementById('spelers-grid');
+
+  if (!IS_CONFIGURED) {
+    grid.innerHTML = '<div class="leeg-melding"><div class="icoon">🔧</div>De site is nog niet gekoppeld aan de database.</div>';
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/spelers?select=naam,rugnummer,foto_url&order=naam.asc`, { headers: HEADERS });
+    const spelers = await resp.json();
+    if (!spelers || spelers.length === 0) {
+      grid.innerHTML = '<div class="leeg-melding">Nog geen spelers gevonden.</div>';
+      return;
+    }
+    grid.innerHTML = spelers.map(s => `
+      <a class="speler-kaart" href="speler.html?naam=${encodeURIComponent(s.naam)}">
+        ${s.foto_url
+          ? `<img class="speler-foto" src="${s.foto_url}" alt="${escapeHtml(s.naam)}" onerror="this.outerHTML='<div class=speler-avatar>⚽</div>'" />`
+          : `<div class="speler-avatar">⚽</div>`}
+        <div class="speler-naam">${escapeHtml(s.naam)}</div>
+        <div class="speler-rugnummer">${s.rugnummer ? '#' + s.rugnummer : ''}</div>
+      </a>
+    `).join('');
+  } catch (e) {
+    grid.innerHTML = '<div class="leeg-melding">Kon niet laden.</div>';
+  }
+}
+
+laadSpelers();
+</script>
+</body>
+</html>

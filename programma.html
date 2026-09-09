@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Programma – JO8-5</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<main>
+  <div class="sectie-titel" style="margin-top:0">📅 Programma</div>
+  <div class="card"><div id="programma-lijst"><div class="leeg-melding">Laden…</div></div></div>
+
+  <div id="beheer-zone"></div>
+</main>
+
+<script src="shared.js"></script>
+<script>
+renderHeader('programma');
+renderFooter();
+
+const sessie = huidigeSessie();
+
+function wedstrijdRij(w, magBewerken) {
+  return `
+    <div class="wedstrijd-rij" data-id="${w.id}">
+      <div class="wedstrijd-datum">${formatDatum(w.datum)}${w.tijd ? ' · ' + w.tijd.slice(0,5) : ''}</div>
+      <div class="wedstrijd-info">
+        <div class="wedstrijd-tegenstander">JO8-5 ${w.thuis_uit === 'uit' ? '−' : 'vs'} ${escapeHtml(w.tegenstander)}</div>
+        <div class="wedstrijd-detail">
+          ${w.thuis_uit ? `<span class="badge-thuis-uit ${w.thuis_uit}">${w.thuis_uit}</span>` : ''}
+          ${w.locatie ? ' · ' + escapeHtml(w.locatie) : ''}
+        </div>
+      </div>
+      ${magBewerken ? `
+        <div style="display:flex;gap:6px">
+          <button class="btn secundair klein" onclick="bewerkWedstrijd(${w.id})">✏️</button>
+          <button class="btn secundair klein" onclick="verwijderWedstrijd(${w.id})">🗑️</button>
+        </div>` : ''}
+    </div>`;
+}
+
+async function laadProgramma() {
+  const lijst = document.getElementById('programma-lijst');
+  if (!IS_CONFIGURED) { lijst.innerHTML = '<div class="leeg-melding"><div class="icoon">🔧</div>Nog niet gekoppeld aan de database.</div>'; return; }
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/wedstrijden?eigen_score=is.null&order=datum.asc`, { headers: HEADERS });
+    const data = await resp.json();
+    if (!data || data.length === 0) { lijst.innerHTML = '<div class="leeg-melding"><div class="icoon">📭</div>Nog geen wedstrijden op het programma.</div>'; return; }
+    lijst.innerHTML = data.map(w => wedstrijdRij(w, sessie && sessie.isBeheerder)).join('');
+  } catch (e) {
+    lijst.innerHTML = '<div class="leeg-melding">Kon niet laden.</div>';
+  }
+}
+
+async function verwijderWedstrijd(id) {
+  if (!confirm('Deze wedstrijd verwijderen?')) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/wedstrijden?id=eq.${id}`, { method: 'DELETE', headers: HEADERS });
+  laadProgramma();
+}
+
+async function bewerkWedstrijd(id) {
+  const resp = await fetch(`${SUPABASE_URL}/rest/v1/wedstrijden?id=eq.${id}&select=*`, { headers: HEADERS });
+  const [w] = await resp.json();
+  toonForm(w);
+}
+
+function toonForm(w) {
+  const isNieuw = !w;
+  const zone = document.getElementById('beheer-zone');
+  zone.innerHTML = `
+    <div class="sectie-titel">${isNieuw ? '➕ Wedstrijd toevoegen' : '✏️ Wedstrijd bewerken'}</div>
+    <div class="card">
+      <form class="form" id="wedstrijd-form">
+        <div class="form-row">
+          <div class="form-group"><label>Datum</label><input type="date" id="w-datum" value="${w?.datum || ''}" required /></div>
+          <div class="form-group"><label>Tijd</label><input type="time" id="w-tijd" value="${w?.tijd ? w.tijd.slice(0,5) : ''}" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Tegenstander</label><input type="text" id="w-tegenstander" value="${w?.tegenstander ? escapeHtml(w.tegenstander) : ''}" required /></div>
+          <div class="form-group"><label>Thuis/uit</label>
+            <select id="w-thuisuit">
+              <option value="thuis" ${w?.thuis_uit==='thuis'?'selected':''}>Thuis</option>
+              <option value="uit" ${w?.thuis_uit==='uit'?'selected':''}>Uit</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>Locatie</label><input type="text" id="w-locatie" value="${w?.locatie ? escapeHtml(w.locatie) : ''}" /></div>
+        <div class="fout-melding" id="w-fout">Opslaan mislukt.</div>
+        <div style="display:flex;gap:10px">
+          <button type="submit" class="btn">Opslaan</button>
+          <button type="button" class="btn secundair" onclick="document.getElementById('beheer-zone').innerHTML=''">Annuleren</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.getElementById('wedstrijd-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const body = {
+      datum: document.getElementById('w-datum').value,
+      tijd: document.getElementById('w-tijd').value || null,
+      tegenstander: document.getElementById('w-tegenstander').value.trim(),
+      thuis_uit: document.getElementById('w-thuisuit').value,
+      locatie: document.getElementById('w-locatie').value.trim() || null,
+    };
+    try {
+      const resp = isNieuw
+        ? await fetch(`${SUPABASE_URL}/rest/v1/wedstrijden`, { method: 'POST', headers: { ...HEADERS, Prefer: 'return=minimal' }, body: JSON.stringify(body) })
+        : await fetch(`${SUPABASE_URL}/rest/v1/wedstrijden?id=eq.${w.id}`, { method: 'PATCH', headers: { ...HEADERS, Prefer: 'return=minimal' }, body: JSON.stringify(body) });
+      if (!resp.ok) throw new Error(await resp.text());
+      document.getElementById('beheer-zone').innerHTML = '';
+      laadProgramma();
+    } catch (err) {
+      document.getElementById('w-fout').classList.add('zichtbaar');
+    }
+  });
+}
+
+if (sessie && sessie.isBeheerder) {
+  document.getElementById('beheer-zone').insertAdjacentHTML('beforeend', `<div style="margin-top:20px"><button class="btn" onclick="toonForm(null)">➕ Wedstrijd toevoegen</button></div>`);
+}
+
+laadProgramma();
+</script>
+</body>
+</html>

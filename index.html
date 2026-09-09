@@ -1,1 +1,101 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JO8-5</title>
+<meta name="description" content="Teamsite van voetbalteam JO8-5: spelers, programma, uitslagen en opstellingen." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
 
+<div id="content">
+  <main>
+    <div class="hero">
+      <h1>⚽ Welkom bij JO8-5</h1>
+      <p>Alles over ons team: de spelers, het programma, de uitslagen en de opstellingen per wedstrijd.</p>
+    </div>
+
+    <div class="sectie-titel">📅 Eerstvolgende wedstrijd</div>
+    <div id="volgende-wedstrijd"><div class="leeg-melding">Laden…</div></div>
+
+    <div class="sectie-titel">🏆 Laatste uitslag</div>
+    <div id="laatste-uitslag"><div class="leeg-melding">Laden…</div></div>
+
+    <div class="sectie-titel">👦 Het team</div>
+    <div class="card" style="text-align:center">
+      <p style="margin-bottom:14px;color:var(--text-muted)">Bekijk alle spelers en hun profiel.</p>
+      <a href="spelers.html" class="btn">Naar het team →</a>
+    </div>
+  </main>
+</div>
+
+<script src="shared.js"></script>
+<script>
+renderHeader('home');
+renderFooter();
+
+async function laadHome() {
+  const volgendeEl = document.getElementById('volgende-wedstrijd');
+  const uitslagEl = document.getElementById('laatste-uitslag');
+
+  if (!IS_CONFIGURED) {
+    const msg = '<div class="leeg-melding"><div class="icoon">🔧</div>De site is nog niet gekoppeld aan de database.</div>';
+    volgendeEl.innerHTML = msg;
+    uitslagEl.innerHTML = msg;
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/wedstrijden?eigen_score=is.null&order=datum.asc&limit=1`, { headers: HEADERS });
+    const data = await resp.json();
+    if (data && data.length > 0) {
+      const w = data[0];
+      volgendeEl.innerHTML = `
+        <div class="card">
+          <div class="wedstrijd-rij" style="border:none;padding:0">
+            <div class="wedstrijd-datum">${formatDatum(w.datum)}${w.tijd ? ' · ' + w.tijd.slice(0,5) : ''}</div>
+            <div class="wedstrijd-info">
+              <div class="wedstrijd-tegenstander">JO8-5 ${w.thuis_uit === 'uit' ? '−' : 'vs'} ${escapeHtml(w.tegenstander)}</div>
+              <div class="wedstrijd-detail">
+                ${w.thuis_uit ? `<span class="badge-thuis-uit ${w.thuis_uit}">${w.thuis_uit}</span>` : ''}
+                ${w.locatie ? ' · ' + escapeHtml(w.locatie) : ''}
+              </div>
+            </div>
+          </div>
+        </div>`;
+    } else {
+      volgendeEl.innerHTML = '<div class="leeg-melding"><div class="icoon">📭</div>Nog geen wedstrijd op het programma.</div>';
+    }
+  } catch (e) {
+    volgendeEl.innerHTML = '<div class="leeg-melding">Kon niet laden.</div>';
+  }
+
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/wedstrijden?eigen_score=not.is.null&order=datum.desc&limit=1`, { headers: HEADERS });
+    const data = await resp.json();
+    if (data && data.length > 0) {
+      const w = data[0];
+      uitslagEl.innerHTML = `
+        <div class="card">
+          <div class="wedstrijd-rij" style="border:none;padding:0">
+            <div class="wedstrijd-datum">${formatDatum(w.datum)}</div>
+            <div class="wedstrijd-info">
+              <div class="wedstrijd-tegenstander">JO8-5 ${w.thuis_uit === 'uit' ? '−' : 'vs'} ${escapeHtml(w.tegenstander)}</div>
+            </div>
+            <div class="wedstrijd-score">${w.eigen_score} - ${w.tegen_score}</div>
+            ${w.verslag ? `<div class="wedstrijd-verslag">${escapeHtml(w.verslag)}</div>` : ''}
+          </div>
+        </div>`;
+    } else {
+      uitslagEl.innerHTML = '<div class="leeg-melding"><div class="icoon">⚽</div>Nog geen wedstrijden gespeeld.</div>';
+    }
+  } catch (e) {
+    uitslagEl.innerHTML = '<div class="leeg-melding">Kon niet laden.</div>';
+  }
+}
+
+laadHome();
+</script>
+</body>
+</html>

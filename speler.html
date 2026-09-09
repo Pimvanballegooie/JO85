@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Speler – JO8-5</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<main>
+  <a href="spelers.html" style="display:inline-block;margin-bottom:16px;color:var(--groen-dark);font-weight:700;font-size:0.88rem;text-decoration:none">← Terug naar het team</a>
+  <div id="speler-inhoud"><div class="leeg-melding">Laden…</div></div>
+</main>
+
+<script src="shared.js"></script>
+<script>
+renderHeader('spelers');
+renderFooter();
+
+const params = new URLSearchParams(window.location.search);
+const NAAM = params.get('naam');
+let huidigeSpeler = null;
+
+function tweebenigheidBar(waarde) {
+  const w = waarde == null ? 50 : waarde;
+  return `
+    <div class="slider-wrap">
+      <div style="position:relative;height:10px;background:var(--grey-border);border-radius:999px">
+        <div style="position:absolute;top:-4px;left:calc(${w}% - 9px);width:18px;height:18px;border-radius:50%;background:var(--groen);border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.25)"></div>
+      </div>
+      <div class="slider-labels"><span>🦶 Linkspoot</span><span>Rechtspoot 🦶</span></div>
+    </div>`;
+}
+
+function renderBekijkModus(s, magBewerken) {
+  const html = `
+    <div class="sectie-titel" style="margin-top:0">
+      ${s.foto_url
+        ? `<img src="${s.foto_url}" alt="${escapeHtml(s.naam)}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid var(--groen-light)" onerror="this.outerHTML='<div class=speler-avatar style=width:56px;height:56px;font-size:1.3rem>⚽</div>'" />`
+        : `<div class="speler-avatar" style="width:56px;height:56px;font-size:1.3rem">⚽</div>`}
+      ${escapeHtml(s.naam)} ${s.rugnummer ? `<span style="color:var(--text-muted);font-weight:600">#${s.rugnummer}</span>` : ''}
+    </div>
+
+    <div class="card">
+      <div class="feit-lijst">
+        <div class="feit"><span class="label">🍕 Lievelingseten</span><span class="waarde">${escapeHtml(s.favoriete_eten)}</span></div>
+        <div class="feit"><span class="label">❤️ Houdt van</span><span class="waarde">${escapeHtml(s.houdt_van)}</span></div>
+        <div class="feit"><span class="label">⭐ Idool</span><span class="waarde">${escapeHtml(s.favoriete_speler)}</span></div>
+        <div class="feit"><span class="label">🏟️ Favoriete club</span><span class="waarde">${escapeHtml(s.favoriete_club)}</span></div>
+      </div>
+
+      <div class="sectie-titel" style="font-size:0.95rem">🦵 Tweebenigheid</div>
+      ${tweebenigheidBar(s.tweebenigheid)}
+
+      <div class="sectie-titel" style="font-size:0.95rem">🤹 Hooghouden-record</div>
+      <div class="stat-blok"><span class="getal">${s.hooghouden_record ?? 0}</span> keer</div>
+    </div>
+
+    <div id="login-of-bewerk" style="margin-top:20px"></div>
+  `;
+  document.getElementById('speler-inhoud').innerHTML = html;
+
+  const zone = document.getElementById('login-of-bewerk');
+  if (magBewerken) {
+    zone.innerHTML = `<button class="btn secundair" id="btn-bewerken">✏️ Profiel bewerken</button>`;
+    document.getElementById('btn-bewerken').addEventListener('click', () => renderBewerkModus(s));
+  } else {
+    zone.innerHTML = `
+      <div class="card">
+        <div class="sectie-titel" style="margin-top:0;font-size:0.95rem">🔐 Ben jij ${escapeHtml(s.naam)} (of een ouder)?</div>
+        <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:10px">Log in om dit profiel bij te werken. Gebruikersnaam én wachtwoord zijn allebei "<strong>${escapeHtml(s.naam)}JO85</strong>".</p>
+        <form class="form" id="login-form" style="margin-top:0">
+          <div class="form-row">
+            <div class="form-group"><label>Gebruikersnaam</label><input type="text" id="login-gebruikersnaam" placeholder="${escapeHtml(s.naam)}JO85" /></div>
+            <div class="form-group"><label>Wachtwoord</label><input type="password" id="login-wachtwoord" placeholder="${escapeHtml(s.naam)}JO85" /></div>
+          </div>
+          <div class="fout-melding" id="login-fout">Onjuiste inloggegevens.</div>
+          <button type="submit" class="btn">Inloggen</button>
+        </form>
+      </div>`;
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const gebruikersnaam = document.getElementById('login-gebruikersnaam').value;
+      const wachtwoord = document.getElementById('login-wachtwoord').value;
+      const fout = document.getElementById('login-fout');
+      fout.classList.remove('zichtbaar');
+      const sessie = await inloggen(gebruikersnaam, wachtwoord);
+      if (!sessie) { fout.classList.add('zichtbaar'); return; }
+      window.location.reload();
+    });
+  }
+}
+
+function renderBewerkModus(s) {
+  document.getElementById('speler-inhoud').innerHTML = `
+    <div class="sectie-titel" style="margin-top:0">✏️ Profiel van ${escapeHtml(s.naam)} bewerken</div>
+    <div class="card">
+      <form class="form" id="bewerk-form">
+        <div class="form-group">
+          <label>Profielfoto (URL)</label>
+          <input type="text" id="f-foto" value="${s.foto_url ? escapeHtml(s.foto_url) : ''}" placeholder="https://..." />
+          <p style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">Upload een foto hieronder, of plak zelf een link.</p>
+          <input type="file" id="f-foto-bestand" accept="image/*" style="margin-top:8px" />
+          <div id="upload-status" style="font-size:0.8rem;color:var(--text-muted);margin-top:6px"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>🍕 Lievelingseten</label><input type="text" id="f-eten" value="${s.favoriete_eten ? escapeHtml(s.favoriete_eten) : ''}" /></div>
+          <div class="form-group"><label>❤️ Houdt van</label><input type="text" id="f-houdtvan" value="${s.houdt_van ? escapeHtml(s.houdt_van) : ''}" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>⭐ Favoriete speler</label><input type="text" id="f-speler" value="${s.favoriete_speler ? escapeHtml(s.favoriete_speler) : ''}" /></div>
+          <div class="form-group"><label>🏟️ Favoriete club</label><input type="text" id="f-club" value="${s.favoriete_club ? escapeHtml(s.favoriete_club) : ''}" /></div>
+        </div>
+        <div class="form-group">
+          <label>🦵 Tweebenigheid</label>
+          <input type="range" id="f-tweebenig" min="0" max="100" value="${s.tweebenigheid ?? 50}" />
+          <div class="slider-labels"><span>🦶 Linkspoot</span><span>Rechtspoot 🦶</span></div>
+        </div>
+        <div class="form-group">
+          <label>🤹 Hooghouden-record</label>
+          <input type="number" id="f-hooghouden" min="0" value="${s.hooghouden_record ?? 0}" />
+        </div>
+        <div class="fout-melding" id="bewerk-fout">Opslaan mislukt. Probeer het opnieuw.</div>
+        <div class="succes-melding" id="bewerk-succes">Opgeslagen!</div>
+        <div style="display:flex;gap:10px">
+          <button type="submit" class="btn">Opslaan</button>
+          <button type="button" class="btn secundair" id="btn-annuleren">Annuleren</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.getElementById('btn-annuleren').addEventListener('click', () => laadSpeler());
+
+  document.getElementById('f-foto-bestand').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('upload-status');
+    statusEl.textContent = 'Bezig met uploaden…';
+    try {
+      const pad = `${s.naam.toLowerCase()}-${Date.now()}-${file.name}`;
+      const resp = await fetch(`${SUPABASE_URL}/storage/v1/object/fotos/${encodeURIComponent(pad)}`, {
+        method: 'POST',
+        headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': file.type },
+        body: file
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/fotos/${pad}`;
+      document.getElementById('f-foto').value = publicUrl;
+      statusEl.textContent = '✓ Geüpload!';
+    } catch (err) {
+      statusEl.textContent = 'Upload mislukt — controleer of de Storage-bucket "fotos" bestaat en publiek is.';
+    }
+  });
+
+  document.getElementById('bewerk-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const foutEl = document.getElementById('bewerk-fout');
+    const succesEl = document.getElementById('bewerk-succes');
+    foutEl.classList.remove('zichtbaar'); succesEl.classList.remove('zichtbaar');
+
+    const body = {
+      foto_url: document.getElementById('f-foto').value.trim() || null,
+      favoriete_eten: document.getElementById('f-eten').value.trim() || null,
+      houdt_van: document.getElementById('f-houdtvan').value.trim() || null,
+      favoriete_speler: document.getElementById('f-speler').value.trim() || null,
+      favoriete_club: document.getElementById('f-club').value.trim() || null,
+      tweebenigheid: parseInt(document.getElementById('f-tweebenig').value, 10),
+      hooghouden_record: parseInt(document.getElementById('f-hooghouden').value, 10) || 0,
+    };
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/spelers?id=eq.${s.id}`, {
+        method: 'PATCH', headers: { ...HEADERS, Prefer: 'return=minimal' }, body: JSON.stringify(body)
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      succesEl.classList.add('zichtbaar');
+      setTimeout(() => laadSpeler(), 700);
+    } catch (err) {
+      foutEl.classList.add('zichtbaar');
+    }
+  });
+}
+
+async function laadSpeler() {
+  const zone = document.getElementById('speler-inhoud');
+  if (!NAAM) { zone.innerHTML = '<div class="leeg-melding">Geen speler opgegeven.</div>'; return; }
+  if (!IS_CONFIGURED) {
+    zone.innerHTML = '<div class="leeg-melding"><div class="icoon">🔧</div>De site is nog niet gekoppeld aan de database.</div>';
+    return;
+  }
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/spelers?naam=eq.${encodeURIComponent(NAAM)}&select=*`, { headers: HEADERS });
+    const data = await resp.json();
+    if (!data || data.length === 0) { zone.innerHTML = '<div class="leeg-melding">Speler niet gevonden.</div>'; return; }
+    const s = data[0];
+    const sessie = huidigeSessie();
+    const magBewerken = sessie && sessie.naam.toLowerCase() === s.naam.toLowerCase();
+    renderBekijkModus(s, magBewerken);
+  } catch (e) {
+    zone.innerHTML = '<div class="leeg-melding">Kon niet laden.</div>';
+  }
+}
+
+document.title = (NAAM || 'Speler') + ' – JO8-5';
+laadSpeler();
+</script>
+</body>
+</html>

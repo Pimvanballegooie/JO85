@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Uitslagen – JO8-5</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<main>
+  <div class="sectie-titel" style="margin-top:0">🏆 Uitslagen</div>
+  <div class="card"><div id="uitslagen-lijst"><div class="leeg-melding">Laden…</div></div></div>
+
+  <div id="beheer-zone"></div>
+</main>
+
+<script src="shared.js"></script>
+<script>
+renderHeader('uitslagen');
+renderFooter();
+
+const sessie = huidigeSessie();
+
+function uitslagRij(w, magBewerken) {
+  return `
+    <div class="wedstrijd-rij" data-id="${w.id}">
+      <div class="wedstrijd-datum">${formatDatum(w.datum)}</div>
+      <div class="wedstrijd-info">
+        <div class="wedstrijd-tegenstander">JO8-5 ${w.thuis_uit === 'uit' ? '−' : 'vs'} ${escapeHtml(w.tegenstander)}</div>
+        <div class="wedstrijd-detail">${w.thuis_uit ? `<span class="badge-thuis-uit ${w.thuis_uit}">${w.thuis_uit}</span>` : ''}</div>
+      </div>
+      <div class="wedstrijd-score">${w.eigen_score} - ${w.tegen_score}</div>
+      ${magBewerken ? `<button class="btn secundair klein" onclick="bewerkUitslag(${w.id})">✏️</button>` : ''}
+      ${w.verslag ? `<div class="wedstrijd-verslag">${escapeHtml(w.verslag)}</div>` : ''}
+    </div>`;
+}
+
+async function laadUitslagen() {
+  const lijst = document.getElementById('uitslagen-lijst');
+  if (!IS_CONFIGURED) { lijst.innerHTML = '<div class="leeg-melding"><div class="icoon">🔧</div>Nog niet gekoppeld aan de database.</div>'; return; }
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/wedstrijden?eigen_score=not.is.null&order=datum.desc`, { headers: HEADERS });
+    const data = await resp.json();
+    if (!data || data.length === 0) { lijst.innerHTML = '<div class="leeg-melding"><div class="icoon">⚽</div>Nog geen wedstrijden gespeeld.</div>'; return; }
+    lijst.innerHTML = data.map(w => uitslagRij(w, sessie && sessie.isBeheerder)).join('');
+  } catch (e) {
+    lijst.innerHTML = '<div class="leeg-melding">Kon niet laden.</div>';
+  }
+}
+
+async function bewerkUitslag(id) {
+  const resp = await fetch(`${SUPABASE_URL}/rest/v1/wedstrijden?id=eq.${id}&select=*`, { headers: HEADERS });
+  const [w] = await resp.json();
+  toonUitslagForm(w);
+}
+
+function toonUitslagForm(w) {
+  const zone = document.getElementById('beheer-zone');
+  zone.innerHTML = `
+    <div class="sectie-titel">✏️ Uitslag &amp; verslag: JO8-5 – ${escapeHtml(w.tegenstander)}</div>
+    <div class="card">
+      <form class="form" id="uitslag-form">
+        <div class="form-row">
+          <div class="form-group"><label>Doelpunten JO8-5</label><input type="number" id="u-eigen" min="0" value="${w.eigen_score ?? ''}" required /></div>
+          <div class="form-group"><label>Doelpunten tegenstander</label><input type="number" id="u-tegen" min="0" value="${w.tegen_score ?? ''}" required /></div>
+        </div>
+        <div class="form-group"><label>Wedstrijdverslag</label><textarea id="u-verslag" placeholder="Hoe ging het?">${w.verslag ? escapeHtml(w.verslag) : ''}</textarea></div>
+        <div class="fout-melding" id="u-fout">Opslaan mislukt.</div>
+        <div style="display:flex;gap:10px">
+          <button type="submit" class="btn">Opslaan</button>
+          <button type="button" class="btn secundair" onclick="document.getElementById('beheer-zone').innerHTML=''">Annuleren</button>
+        </div>
+      </form>
+    </div>`;
+
+  document.getElementById('uitslag-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const body = {
+      eigen_score: parseInt(document.getElementById('u-eigen').value, 10),
+      tegen_score: parseInt(document.getElementById('u-tegen').value, 10),
+      verslag: document.getElementById('u-verslag').value.trim() || null,
+    };
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/wedstrijden?id=eq.${w.id}`, { method: 'PATCH', headers: { ...HEADERS, Prefer: 'return=minimal' }, body: JSON.stringify(body) });
+      if (!resp.ok) throw new Error(await resp.text());
+      document.getElementById('beheer-zone').innerHTML = '';
+      laadUitslagen();
+    } catch (err) {
+      document.getElementById('u-fout').classList.add('zichtbaar');
+    }
+  });
+}
+
+async function toonInvulKeuze() {
+  const zone = document.getElementById('beheer-zone');
+  if (!IS_CONFIGURED) return;
+  const resp = await fetch(`${SUPABASE_URL}/rest/v1/wedstrijden?eigen_score=is.null&order=datum.asc&select=id,datum,tegenstander`, { headers: HEADERS });
+  const data = await resp.json();
+  if (!data || data.length === 0) {
+    zone.innerHTML = '<p style="font-size:0.85rem;color:var(--text-muted)">Geen geplande wedstrijden om een uitslag aan te koppelen — voeg er eerst één toe via <a href="programma.html" style="color:var(--groen-dark);font-weight:700">Programma</a>.</p>';
+    return;
+  }
+  zone.innerHTML = `
+    <div class="card">
+      <div class="form-group">
+        <label>Voor welke wedstrijd wil je een uitslag invullen?</label>
+        <select id="kies-wedstrijd">
+          ${data.map(w => `<option value="${w.id}">${formatDatum(w.datum)} — vs ${escapeHtml(w.tegenstander)}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn klein" style="margin-top:10px" onclick="kiesVoorInvullen()">Verder</button>
+    </div>`;
+}
+
+async function kiesVoorInvullen() {
+  const id = document.getElementById('kies-wedstrijd').value;
+  const resp = await fetch(`${SUPABASE_URL}/rest/v1/wedstrijden?id=eq.${id}&select=*`, { headers: HEADERS });
+  const [w] = await resp.json();
+  toonUitslagForm(w);
+}
+
+if (sessie && sessie.isBeheerder) {
+  document.getElementById('beheer-zone').insertAdjacentHTML('beforeend', `<div class="sectie-titel">➕ Uitslag invullen</div>`);
+  toonInvulKeuze();
+}
+
+laadUitslagen();
+</script>
+</body>
+</html>

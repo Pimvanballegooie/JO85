@@ -1,0 +1,186 @@
+:root {
+  --groen: #2E8B3D;
+  --groen-dark: #1F6329;
+  --groen-light: #EAF6EC;
+  --oranje: #F5A623;
+  --oranje-dark: #D68C0F;
+  --navy: #1B2A3A;
+  --grey-bg: #F5F7F5;
+  --grey-border: #E0E5E0;
+  --text: #1B2A3A;
+  --text-muted: #6B7A72;
+  --white: #FFFFFF;
+  --rood: #C0392B;
+  --rood-light: #FDEDEC;
+}
+
+* , *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--grey-bg);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+a { color: inherit; }
+
+header.site-header {
+  background: linear-gradient(135deg, var(--groen) 0%, var(--groen-dark) 100%);
+  color: var(--white);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  position: sticky; top: 0; z-index: 100;
+}
+.header-inner {
+  max-width: 1000px; margin: 0 auto; padding: 0 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 64px; gap: 12px; flex-wrap: wrap;
+}
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--white); font-weight: 800; font-size: 1.15rem; letter-spacing: 0.02em; }
+.logo .bal { font-size: 1.4rem; }
+nav.main-nav { display: flex; gap: 4px; flex-wrap: wrap; }
+nav.main-nav a {
+  text-decoration: none; color: rgba(255,255,255,0.88); font-size: 0.88rem; font-weight: 600;
+  padding: 8px 12px; border-radius: 999px; transition: background 0.15s;
+}
+nav.main-nav a:hover, nav.main-nav a.actief { background: rgba(255,255,255,0.18); color: var(--white); }
+
+.login-status { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: rgba(255,255,255,0.9); }
+.login-status .naam { font-weight: 700; }
+.login-status .beheerder-badge { background: var(--oranje); color: var(--navy); font-size: 0.66rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; }
+.btn-uitloggen { background: none; border: 1px solid rgba(255,255,255,0.4); color: var(--white); font-size: 0.78rem; font-weight: 600; padding: 5px 11px; border-radius: 999px; cursor: pointer; font-family: inherit; }
+.btn-uitloggen:hover { background: rgba(255,255,255,0.15); }
+
+main { max-width: 1000px; margin: 0 auto; padding: 28px 20px 60px; }
+
+.hero {
+  background: linear-gradient(135deg, var(--groen) 0%, #3FA855 45%, var(--oranje) 130%);
+  color: var(--white); border-radius: 18px; padding: 32px 24px; margin-bottom: 28px;
+  box-shadow: 0 8px 24px rgba(46,139,61,0.25);
+}
+.hero h1 { font-size: clamp(1.5rem, 4vw, 2.1rem); font-weight: 800; margin-bottom: 8px; }
+.hero p { opacity: 0.95; font-size: 0.95rem; max-width: 520px; }
+
+.sectie-titel { font-size: 1.15rem; font-weight: 800; color: var(--navy); margin: 32px 0 14px; display: flex; align-items: center; gap: 8px; }
+.sectie-titel:first-child { margin-top: 0; }
+
+.card { background: var(--white); border: 1px solid var(--grey-border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.card + .card { margin-top: 12px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+
+.speler-kaart {
+  background: var(--white); border: 1px solid var(--grey-border); border-radius: 16px;
+  padding: 16px; text-align: center; text-decoration: none; color: var(--text);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.speler-kaart:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(46,139,61,0.18); border-color: var(--groen); }
+.speler-foto, .speler-avatar {
+  width: 84px; height: 84px; border-radius: 50%; margin: 0 auto 10px; object-fit: cover;
+  border: 3px solid var(--groen-light);
+}
+.speler-avatar { background: var(--groen-light); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--groen); }
+.speler-naam { font-weight: 700; font-size: 0.95rem; color: var(--navy); }
+.speler-rugnummer { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+.feit-lijst { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.feit { display: flex; gap: 10px; align-items: baseline; }
+.feit .label { flex: none; width: 150px; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.feit .waarde { font-size: 0.95rem; color: var(--text); }
+.feit .waarde:empty::after { content: '—'; color: var(--grey-border); }
+
+.slider-wrap { margin-top: 6px; }
+.slider-labels { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; font-weight: 600; }
+input[type="range"] { width: 100%; accent-color: var(--groen); }
+
+.stat-blok { display: inline-flex; align-items: center; gap: 8px; background: var(--oranje); color: var(--navy); font-weight: 800; padding: 8px 16px; border-radius: 12px; font-size: 0.95rem; }
+.stat-blok .getal { font-size: 1.4rem; }
+
+form.form { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.form-group label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--navy); margin-bottom: 5px; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 10px 12px; border: 1.5px solid var(--grey-border); border-radius: 9px;
+  font-family: inherit; font-size: 0.92rem; color: var(--text); background: var(--white);
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--groen); box-shadow: 0 0 0 3px rgba(46,139,61,0.14); }
+.form-group textarea { resize: vertical; min-height: 70px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .form-row { grid-template-columns: 1fr; } }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background: var(--groen); color: var(--white); border: none; border-radius: 10px;
+  padding: 11px 20px; font-family: inherit; font-size: 0.92rem; font-weight: 700; cursor: pointer;
+  transition: background 0.15s;
+}
+.btn:hover { background: var(--groen-dark); }
+.btn.secundair { background: var(--white); color: var(--groen); border: 1.5px solid var(--groen); }
+.btn.secundair:hover { background: var(--groen-light); }
+.btn.klein { padding: 7px 14px; font-size: 0.82rem; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.fout-melding { background: var(--rood-light); color: var(--rood); border: 1px solid rgba(192,57,43,0.3); border-radius: 9px; padding: 10px 14px; font-size: 0.85rem; display: none; }
+.fout-melding.zichtbaar { display: block; }
+.succes-melding { background: var(--groen-light); color: var(--groen-dark); border: 1px solid rgba(46,139,61,0.3); border-radius: 9px; padding: 10px 14px; font-size: 0.85rem; display: none; }
+.succes-melding.zichtbaar { display: block; }
+
+.wedstrijd-rij { display: flex; align-items: center; gap: 14px; padding: 14px 4px; border-bottom: 1px solid var(--grey-border); flex-wrap: wrap; }
+.wedstrijd-rij:last-child { border-bottom: none; }
+.wedstrijd-datum { flex: none; width: 92px; font-size: 0.8rem; color: var(--text-muted); font-weight: 700; }
+.wedstrijd-info { flex: 1; min-width: 160px; }
+.wedstrijd-tegenstander { font-weight: 700; color: var(--navy); font-size: 0.95rem; }
+.wedstrijd-detail { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+.wedstrijd-score { flex: none; font-size: 1.15rem; font-weight: 800; color: var(--groen-dark); background: var(--groen-light); padding: 5px 14px; border-radius: 999px; }
+.wedstrijd-verslag { flex-basis: 100%; font-size: 0.87rem; color: var(--text); background: var(--grey-bg); border-radius: 9px; padding: 10px 12px; margin-top: 6px; }
+
+.badge-thuis-uit { font-size: 0.68rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; }
+.badge-thuis-uit.thuis { background: var(--groen-light); color: var(--groen-dark); }
+.badge-thuis-uit.uit { background: #EAF0FB; color: #1A5276; }
+
+.leeg-melding { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 0.9rem; }
+.leeg-melding .icoon { font-size: 2.2rem; margin-bottom: 8px; }
+
+footer.site-footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 0.78rem; }
+
+/* ============ Opstelling / veld ============ */
+.kwarten-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+.kwart-blok { background: var(--white); border: 1px solid var(--grey-border); border-radius: 16px; padding: 16px; }
+.kwart-titel { font-weight: 800; color: var(--navy); font-size: 0.98rem; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+
+.veld {
+  position: relative; width: 100%; aspect-ratio: 3 / 4;
+  background: repeating-linear-gradient(0deg, #3FA855 0px, #3FA855 34px, #379a4c 34px, #379a4c 68px);
+  border: 3px solid rgba(255,255,255,0.85); border-radius: 10px; overflow: hidden;
+  touch-action: none;
+}
+.veld::before { content:''; position:absolute; left:0; right:0; top:50%; height:2px; background:rgba(255,255,255,0.7); }
+.veld::after { content:''; position:absolute; left:50%; top:50%; width:60px; height:60px; margin:-30px 0 0 -30px; border:2px solid rgba(255,255,255,0.7); border-radius:50%; }
+.veld .goal-box { position:absolute; left:50%; bottom:0; width:46%; height:14%; margin-left:-23%; border:2px solid rgba(255,255,255,0.7); border-bottom:none; border-radius: 3px 3px 0 0; }
+
+.veld-slot { position: absolute; transform: translate(-50%, -50%); }
+
+.speler-chip {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  cursor: grab; user-select: none; touch-action: none; width: 58px;
+}
+.speler-chip .chip-foto, .speler-chip .chip-avatar {
+  width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+  border: 2.5px solid var(--white); box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  background: var(--oranje); display: flex; align-items: center; justify-content: center;
+  font-size: 0.95rem; font-weight: 800; color: var(--navy);
+}
+.speler-chip.keeper .chip-foto, .speler-chip.keeper .chip-avatar { border-color: var(--oranje); box-shadow: 0 0 0 2px var(--oranje), 0 2px 6px rgba(0,0,0,0.3); }
+.speler-chip .chip-naam { font-size: 0.66rem; font-weight: 700; color: var(--white); text-shadow: 0 1px 3px rgba(0,0,0,0.6); text-align: center; line-height: 1.1; white-space: nowrap; }
+.speler-chip.dragging { opacity: 0.35; }
+.speler-chip.niet-bewerkbaar { cursor: default; }
+
+.bank-wrap { margin-top: 12px; }
+.bank-titel { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 6px; }
+.bank-rij { display: flex; gap: 14px; background: var(--grey-bg); border: 1px dashed var(--grey-border); border-radius: 10px; padding: 10px; min-height: 62px; touch-action: none; }
+.bank-rij .speler-chip .chip-naam { color: var(--navy); text-shadow: none; }
+
+.sleep-ghost { position: fixed; pointer-events: none; z-index: 999; transform: translate(-50%, -50%); opacity: 0.9; }
+
+select#kies-opstelling-wedstrijd { max-width: 400px; }
