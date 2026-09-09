@@ -31,11 +31,12 @@ const sessie = huidigeSessie();
 const MAG_BEWERKEN = !!(sessie && sessie.isBeheerder);
 
 // Vaste veldposities: index 0 = keeper, 1-2 = verdedigers, 3-4 = middenvelders, 5 = aanvaller
+// Opstelling 2-1-2: keeper, 2 verdedigers, 1 middenvelder (mid-mid), 2 aanvallers
 const POSITIES = [
   { x: 50, y: 90, rol: 'keeper' },
-  { x: 28, y: 68 }, { x: 72, y: 68 },
-  { x: 28, y: 42 }, { x: 72, y: 42 },
-  { x: 50, y: 18 },
+  { x: 28, y: 66 }, { x: 72, y: 66 },   // verdedigers
+  { x: 50, y: 44 },                      // middenvelder
+  { x: 28, y: 18 }, { x: 72, y: 18 },   // aanvallers
 ];
 
 let SPELERS = [];         // [{id, naam, foto_url}]
