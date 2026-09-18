@@ -10,14 +10,7 @@
 
 <main>
   <div class="sectie-titel" style="margin-top:0">🧩 Opstelling</div>
-  <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px">Elk kwart heeft een eigen keeper, 5 veldspelers en 2 wissels. Sleep een speler op een andere plek (of op de bank) om te wisselen.</p>
-
-  <div class="card" style="margin-bottom:20px">
-    <div class="form-group" style="margin:0">
-      <label>Wedstrijd</label>
-      <select id="kies-opstelling-wedstrijd"></select>
-    </div>
-  </div>
+  <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:14px">Elk kwart heeft een eigen keeper, 5 veldspelers en 2 wissels. Sleep een speler op een andere plek (of op de bank) om te wisselen. Deze opstelling is niet aan een specifieke wedstrijd gekoppeld en wordt lokaal in je browser bewaard.</p>
 
   <div id="opstelling-inhoud"><div class="leeg-melding">Laden…</div></div>
 </main>
@@ -27,10 +20,13 @@
 renderHeader('opstelling');
 renderFooter();
 
-const sessie = huidigeSessie();
-const MAG_BEWERKEN = !!(sessie && sessie.isBeheerder);
+// Deze pagina werkt zonder database: de spelers komen uit SPELERS_NAMEN
+// (shared.js) en de opstelling wordt lokaal opgeslagen (localStorage),
+// niet gekoppeld aan een wedstrijd uit Supabase.
+const MAG_BEWERKEN = true;
+const LOKALE_OPSLAG_KEY = 'jo85_opstelling_lokaal';
 
-// Vaste veldposities: index 0 = keeper, 1-2 = verdedigers, 3-4 = middenvelders, 5 = aanvaller
+// Vaste veldposities: index 0 = keeper, 1-2 = verdedigers, 3 = middenvelder, 4-5 = aanvallers
 // Opstelling 2-1-2: keeper, 2 verdedigers, 1 middenvelder (mid-mid), 2 aanvallers
 const POSITIES = [
   { x: 50, y: 90, rol: 'keeper' },
@@ -39,10 +35,9 @@ const POSITIES = [
   { x: 28, y: 18 }, { x: 72, y: 18 },   // aanvallers
 ];
 
-let SPELERS = [];         // [{id, naam, foto_url}]
-let SPELERS_BY_ID = {};
-let KWART_DATA = {};      // { 1: {spelers:[id x6], wissels:[id x2]}, 2: {...}, 3: {...}, 4: {...} }
-let HUIDIGE_WEDSTRIJD_ID = null;
+const SPELERS = SPELERS_NAMEN.map((naam, i) => ({ id: i + 1, naam, foto_url: null }));
+const SPELERS_BY_ID = Object.fromEntries(SPELERS.map(s => [s.id, s]));
+let KWART_DATA = {}; // { 1: {spelers:[id x6], wissels:[id x2]}, 2: {...}, 3: {...}, 4: {...} }
 
 function chipHtml(spelerId, kwart, slotType, slotIndex, rol) {
   const s = SPELERS_BY_ID[spelerId];
@@ -88,12 +83,19 @@ function renderAlleKwarten() {
     html += `
       <div style="margin-top:20px;display:flex;align-items:center;gap:12px">
         <button class="btn" id="btn-opslaan-opstelling">💾 Opstelling opslaan</button>
+        <button class="btn secundair" id="btn-reset-opstelling">↺ Standaard</button>
         <span id="opslaan-status" style="font-size:0.85rem;color:var(--text-muted)"></span>
       </div>`;
   }
   wrap.innerHTML = html;
   if (MAG_BEWERKEN) {
     document.getElementById('btn-opslaan-opstelling').addEventListener('click', slaOpstellingOp);
+    document.getElementById('btn-reset-opstelling').addEventListener('click', () => {
+      if (!confirm('Terug naar de standaardindeling? Lokaal opgeslagen wijzigingen gaan verloren.')) return;
+      localStorage.removeItem(LOKALE_OPSLAG_KEY);
+      KWART_DATA = { 1: standaardKwartData(), 2: standaardKwartData(), 3: standaardKwartData(), 4: standaardKwartData() };
+      renderAlleKwarten();
+    });
     koppelSleepEvents();
   }
 }
@@ -190,86 +192,42 @@ function onPointerUp(e) {
   koppelSleepEvents();
 }
 
-// ============ Data laden/opslaan ============
+// ============ Data laden/opslaan (lokaal — geen database) ============
 function standaardKwartData() {
   const ids = SPELERS.map(s => s.id);
   return { spelers: ids.slice(0, 6), wissels: ids.slice(6, 8) };
 }
 
-async function laadOpstellingen() {
-  const inhoud = document.getElementById('opstelling-inhoud');
-  if (!IS_CONFIGURED) { inhoud.innerHTML = '<div class="leeg-melding"><div class="icoon">🔧</div>Nog niet gekoppeld aan de database.</div>'; return; }
-  if (!HUIDIGE_WEDSTRIJD_ID) { inhoud.innerHTML = '<div class="leeg-melding">Geen wedstrijden gevonden — voeg er eerst een toe via Programma.</div>'; return; }
-
+function laadOpstellingen() {
   KWART_DATA = { 1: standaardKwartData(), 2: standaardKwartData(), 3: standaardKwartData(), 4: standaardKwartData() };
-
   try {
-    const resp = await fetch(`${SUPABASE_URL}/rest/v1/opstellingen?wedstrijd_id=eq.${HUIDIGE_WEDSTRIJD_ID}&select=*`, { headers: HEADERS });
-    const rijen = await resp.json();
-    (rijen || []).forEach(r => {
-      if (r.kwart >= 1 && r.kwart <= 4 && Array.isArray(r.spelers) && r.spelers.length === 6) {
-        KWART_DATA[r.kwart] = { spelers: r.spelers.slice(), wissels: (r.wissels || []).slice() };
-      }
-    });
+    const raw = localStorage.getItem(LOKALE_OPSLAG_KEY);
+    if (raw) {
+      const opgeslagen = JSON.parse(raw);
+      [1, 2, 3, 4].forEach(kwart => {
+        const r = opgeslagen[kwart];
+        if (r && Array.isArray(r.spelers) && r.spelers.length === 6) {
+          KWART_DATA[kwart] = { spelers: r.spelers.slice(), wissels: (r.wissels || []).slice() };
+        }
+      });
+    }
   } catch (e) { /* val terug op standaardindeling */ }
 
   renderAlleKwarten();
 }
 
-async function slaOpstellingOp() {
+function slaOpstellingOp() {
   const status = document.getElementById('opslaan-status');
-  status.textContent = 'Bezig met opslaan…';
   try {
-    for (const kwart of [1, 2, 3, 4]) {
-      const data = KWART_DATA[kwart];
-      const body = { wedstrijd_id: HUIDIGE_WEDSTRIJD_ID, kwart, spelers: data.spelers, wissels: data.wissels };
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/opstellingen?on_conflict=wedstrijd_id,kwart`, {
-        method: 'POST',
-        headers: { ...HEADERS, Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify(body)
-      });
-      if (!resp.ok) throw new Error(await resp.text());
-    }
-    status.textContent = '✓ Opgeslagen!';
+    localStorage.setItem(LOKALE_OPSLAG_KEY, JSON.stringify(KWART_DATA));
+    status.textContent = '✓ Opgeslagen op dit apparaat!';
     setTimeout(() => { status.textContent = ''; }, 2500);
   } catch (e) {
     status.textContent = 'Opslaan mislukt.';
   }
 }
 
-async function initPagina() {
-  const inhoud = document.getElementById('opstelling-inhoud');
-  const select = document.getElementById('kies-opstelling-wedstrijd');
-  if (!IS_CONFIGURED) { inhoud.innerHTML = '<div class="leeg-melding"><div class="icoon">🔧</div>Nog niet gekoppeld aan de database.</div>'; return; }
-
-  try {
-    const [spelersResp, wedstrijdenResp] = await Promise.all([
-      fetch(`${SUPABASE_URL}/rest/v1/spelers?select=id,naam,foto_url&order=naam.asc`, { headers: HEADERS }),
-      fetch(`${SUPABASE_URL}/rest/v1/wedstrijden?select=id,datum,tegenstander&order=datum.desc`, { headers: HEADERS }),
-    ]);
-    SPELERS = await spelersResp.json();
-    SPELERS_BY_ID = Object.fromEntries(SPELERS.map(s => [s.id, s]));
-    const wedstrijden = await wedstrijdenResp.json();
-
-    if (!wedstrijden || wedstrijden.length === 0) {
-      inhoud.innerHTML = '<div class="leeg-melding">Nog geen wedstrijden — voeg er eerst een toe via <a href="programma.html" style="color:var(--groen-dark);font-weight:700">Programma</a>.</div>';
-      return;
-    }
-
-    select.innerHTML = wedstrijden.map(w => `<option value="${w.id}">${formatDatum(w.datum)} — vs ${escapeHtml(w.tegenstander)}</option>`).join('');
-    HUIDIGE_WEDSTRIJD_ID = wedstrijden[0].id;
-    select.addEventListener('change', () => {
-      HUIDIGE_WEDSTRIJD_ID = parseInt(select.value, 10);
-      laadOpstellingen();
-    });
-
-    laadOpstellingen();
-  } catch (e) {
-    inhoud.innerHTML = '<div class="leeg-melding">Kon niet laden.</div>';
-  }
-}
-
-initPagina();
+laadOpstellingen();
 </script>
 </body>
 </html>
