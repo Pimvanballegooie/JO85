@@ -55,9 +55,9 @@ create policy "iedereen mag schrijven - opstellingen" on opstellingen for all us
 insert into spelers (naam, is_beheerder) values
   ('Sam', true),
   ('Milas', false),
-  ('Giani', false),
+  ('Gianni', false),
   ('Luuk', true),
   ('Bas', true),
   ('Imran', false),
-  ('Effe', false),
+  ('Efe', false),
   ('Joshua', false);

@@ -6,7 +6,7 @@ const HEADERS = { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}`, 'Conten
 const IS_CONFIGURED = !SUPABASE_URL.startsWith('VUL_HIER');
 
 // ============ Spelers (vaste lijst voor het inlogformulier) ============
-const SPELERS_NAMEN = ['Sam', 'Milas', 'Giani', 'Luuk', 'Bas', 'Imran', 'Effe', 'Joshua'];
+const SPELERS_NAMEN = ['Sam', 'Milas', 'Gianni', 'Luuk', 'Bas', 'Imran', 'Efe', 'Joshua'];
 
 // ============ Sessie / login ============
 // Simpel, laagdrempelig "wie ben jij"-slotje: gebruikersnaam én wachtwoord moeten
