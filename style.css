@@ -145,7 +145,8 @@ form.form { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; 
 footer.site-footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 0.78rem; }
 
 /* ============ Opstelling / veld ============ */
-.kwarten-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+.kwarten-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+@media (max-width: 600px) { .kwarten-grid { grid-template-columns: 1fr; } }
 .kwart-blok { background: var(--white); border: 1px solid var(--grey-border); border-radius: 16px; padding: 16px; }
 .kwart-titel { font-weight: 800; color: var(--navy); font-size: 0.98rem; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
 
